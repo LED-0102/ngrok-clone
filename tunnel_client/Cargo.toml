@@ -1,0 +1,13 @@
+[package]
+name = "tunnel_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.26", features = ["derive"] }
+futures-util = "0.3.31"
+env_logger = "0.11.6"
+tokio = "1.43.0"
+tokio-tungstenite = "0.26.1"
+url = "2.5.4"
+futures-channel = "0.3.31"
