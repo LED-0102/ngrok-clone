@@ -50,7 +50,7 @@ impl Actor for UserActor {
         self.client
             .send(ConnectUser {
                 user_id: self.user_id.clone(),
-                addr: addr.recipient(),
+                addr,
             })
             .into_actor(self)
             .then(|res, _, ctx| {

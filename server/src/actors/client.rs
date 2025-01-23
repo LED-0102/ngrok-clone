@@ -2,6 +2,7 @@ use actix::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 use actix_web_actors::ws;
+use crate::actors::user::UserActor;
 use crate::server::{ChatServer, Connect, Disconnect, Message};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -13,14 +14,14 @@ pub struct ClientActor {
     pub hb: Instant,
     pub client_id: String,
     pub addr: Addr<ChatServer>,
-    pub user_sessions: HashMap<String, Recipient<Message>>,
+    pub user_sessions: HashMap<String, Addr<UserActor>>,
 }
 
 #[derive(actix::Message)]
 #[rtype(result = "()")]
 pub struct ConnectUser {
     pub user_id: String,
-    pub addr: Recipient<Message>,
+    pub addr: Addr<UserActor>,
 }
 
 #[derive(actix::Message)]

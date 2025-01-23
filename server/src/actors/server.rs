@@ -7,8 +7,11 @@ use std::{
 };
 
 use actix::prelude::*;
+use actix_web::web;
 use rand::{rngs::ThreadRng, Rng};
+use tokio::sync::oneshot;
 use crate::actors::client::ClientActor;
+use crate::request_manager::RequestState;
 
 #[derive(actix::Message)]
 #[rtype(result = "()")]
@@ -39,6 +42,16 @@ pub struct ClientAddr {
 
 impl actix::Message for ClientAddr {
     type Result = Option<Addr<ClientActor>>;
+}
+
+pub struct AddRequest {
+    pub request_id: String,
+    pub client_id: String,
+    pub request_state: web::Data<RequestState>,
+}
+
+impl actix::Message for AddRequest {
+    type Result = Option<oneshot::Receiver<String>>;
 }
 
 #[derive(Debug)]
@@ -110,6 +123,20 @@ impl Handler<ClientAddr> for ChatServer {
         match addr {
             Some(addr) => Some(addr.clone()),
             None => None,
+        }
+    }
+}
+
+impl Handler<AddRequest> for ChatServer {
+    type Result = Option<oneshot::Receiver<String>>;
+
+    fn handle(&mut self, msg: AddRequest, _: &mut Self::Context) -> Self::Result {
+        if self.sessions.contains_key(&msg.client_id) {
+            let rx = msg.request_state.setup_channel(msg.client_id.clone(), msg.request_id.clone());
+
+            Some(rx)
+        } else {
+            None
         }
     }
 }
