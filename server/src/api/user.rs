@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use actix::Addr;
@@ -9,6 +10,7 @@ use crate::actors;
 use crate::actors::client::ClientActor;
 use crate::actors::server;
 use crate::request_manager::RequestState;
+use tunnel_protocol::MessageProtocol;
 
 fn generate_unique_string() -> String {
     let random_string: String = rand::thread_rng()
@@ -39,9 +41,11 @@ fn generate_unique_request_id() -> String {
 
     format!("{timestamp}-{random_string}")
 }
+
+
 pub async fn user_route (
     req: HttpRequest,
-    stream: web::Payload,
+    mut stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
     path: web::Path<(String, String)>,
     request_state: web::Data<RequestState>
@@ -100,7 +104,27 @@ pub async fn user_route (
         })
             .await.unwrap();
 
-        // Logic to send request to client
+        let bytes = stream.to_bytes().await;
+        let mut body = Vec::new();
+        while let Ok(chunk) = &bytes {
+            body.extend_from_slice(&chunk); // Append the chunk to the Vec<u8>.
+        }
+
+        // Collect headers into a HashMap<Cow<str>, Cow<[u8]>> without cloning.
+        let headers: HashMap<Cow<str>, Cow<[u8]>> = req.headers()
+            .iter()
+            .map(|(key, value)| (Cow::from(key.as_str()), Cow::from(value.as_bytes())))
+            .collect();
+
+        // Construct the HTTP request message protocol with references.
+        let http_request = MessageProtocol::from_http_request(
+            Cow::from(req.method().as_str()),   // Convert to Cow::from
+            Cow::from(tail.as_str()),           // Convert to Cow::from
+            headers,                        // Pass the wrapped headers
+            Cow::from(body.as_slice()),         // Convert the body to Cow::from
+            Cow::from(request_id.as_str()),     // Convert to Cow::from
+        );
+
 
         // Receive response from client
         match recv {
@@ -111,7 +135,7 @@ pub async fn user_route (
                     //     Forward the response to client
                     },
                     Err(e) => {
-                        return Ok(HttpResponse::InternalServerError().body(e.into()));
+                        return Ok(HttpResponse::InternalServerError().body(e.to_string()));
                     }
                 }
             }

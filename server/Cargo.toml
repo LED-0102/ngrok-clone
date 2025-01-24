@@ -12,3 +12,4 @@ rand = "0.8.5"
 log = "0.4.25"
 dashmap = "6.1.0"
 tokio = "1.43.0"
+tunnel_protocol = { path = "../tunnel_protocol" }

@@ -44,6 +44,11 @@ impl actix::Message for ClientAddr {
     type Result = Option<Addr<ClientActor>>;
 }
 
+pub struct SendMessage {
+    pub client_id: String,
+
+}
+
 pub struct AddRequest {
     pub request_id: String,
     pub client_id: String,
