@@ -16,6 +16,8 @@ pub async fn client_route(
         .get("user_id")
         .and_then(|val| val.to_str().ok());
 
+    println!("User ID: {:?}", user_id);
+
     match user_id {
         Some(user_id) => {
             let key = srv.send(server::CheckKey {
