@@ -1,19 +1,17 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
+use std::str::FromStr;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use actix::Addr;
+use actix::{Addr};
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
-use rand::distributions::Alphanumeric;
+use rand::distr::Alphanumeric;
 use rand::Rng;
-use crate::actors;
-use crate::actors::client::ClientActor;
 use crate::actors::server;
 use crate::request_manager::RequestState;
-use tunnel_protocol::MessageProtocol;
+use tunnel_protocol::{MessageProtocol, http_response};
+use crate::actors;
 
 fn generate_unique_string() -> String {
-    let random_string: String = rand::thread_rng()
+    let random_string: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(16)
         .map(char::from)
@@ -28,7 +26,7 @@ fn generate_unique_string() -> String {
 }
 
 fn generate_unique_request_id() -> String {
-    let random_string: String = rand::thread_rng()
+    let random_string: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(16)
         .map(char::from)
@@ -44,8 +42,8 @@ fn generate_unique_request_id() -> String {
 
 
 pub async fn user_route (
-    req: HttpRequest,
-    mut stream: web::Payload,
+    mut req: HttpRequest,
+    stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
     path: web::Path<(String, String)>,
     request_state: web::Data<RequestState>
@@ -85,66 +83,59 @@ pub async fn user_route (
     let request_id = generate_unique_request_id();
     let mut r = request_state.clone();
 
+    let mut recv = match srv.send(server::AddRequest {
+        request_id: request_id.clone(),
+        client_id: service_id.clone(),
+        request_state: r,
+    })
+        .await {
+        Ok(s) => {s}
+        Err(e) => {
+            return Ok(HttpResponse::BadRequest().body(e.to_string()));
+        }
+    };
+
     if is_websocket {
         let user_id = generate_unique_string();
-        // return ws::start(
-        //     actors::user::UserActor {
-        //         hb: Instant::now(),
-        //         user_id,
-        //         client: client.unwrap(),
-        //     },
-        //     &req,
-        //     stream,
-        // );
+        ws::start(
+            actors::user::UserActor {
+                hb: Instant::now(),
+                user_id,
+                client: client.unwrap(),
+            },
+            &req,
+            stream,
+        )
     } else {
-        let mut recv = srv.send(server::AddRequest {
-            request_id: request_id.clone(),
-            client_id: service_id.clone(),
-            request_state: r,
-        })
-            .await.unwrap();
+        let http_request = MessageProtocol::from_actix_request(&req, stream, &tail).await;
 
-        let bytes = stream.to_bytes().await;
-        let mut body = Vec::new();
-        while let Ok(chunk) = &bytes {
-            body.extend_from_slice(&chunk); // Append the chunk to the Vec<u8>.
-        }
+        srv.do_send(server::SendMessage {
+            client_id: service_id.to_string(),
+            message: http_request,
+            request_id,
+        });
 
-        // Collect headers into a HashMap<Cow<str>, Cow<[u8]>> without cloning.
-        let headers: HashMap<Cow<str>, Cow<[u8]>> = req.headers()
-            .iter()
-            .map(|(key, value)| (Cow::from(key.as_str()), Cow::from(value.as_bytes())))
-            .collect();
-
-        // Construct the HTTP request message protocol with references.
-        let http_request = MessageProtocol::from_http_request(
-            Cow::from(req.method().as_str()),   // Convert to Cow::from
-            Cow::from(tail.as_str()),           // Convert to Cow::from
-            headers,                        // Pass the wrapped headers
-            Cow::from(body.as_slice()),         // Convert the body to Cow::from
-            Cow::from(request_id.as_str()),     // Convert to Cow::from
-        );
-
-
-        // Receive response from client
         match recv {
             Some(rx) => {
                 match rx.await {
                     Ok(response) => {
-                        println!("Response from client: {}", response);
-                    //     Forward the response to client
+                        match http_response::HttpResponseWrapper::from_str(&response) {
+                            Ok(res) => {
+                                Ok(res.into())
+                            }
+                            Err(e) => {
+                                Ok(HttpResponse::InternalServerError().body(e))
+                            }
+                        }
                     },
                     Err(e) => {
-                        return Ok(HttpResponse::InternalServerError().body(e.to_string()));
+                        Ok(HttpResponse::InternalServerError().body(e.to_string()))
                     }
                 }
             }
             None => {
-                return Ok(HttpResponse::BadRequest().body("Invalid URL"));
+                Ok(HttpResponse::BadRequest().body("Invalid URL"))
             }
-        };
+        }
     }
-
-
-    Ok(HttpResponse::Ok().body("Hello"))
 }

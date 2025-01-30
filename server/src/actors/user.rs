@@ -1,8 +1,7 @@
-use std::time::{Duration, Instant};
+use crate::client::{ClientActor, ConnectUser, DisconnectUser, UserMessage};
 use actix::prelude::*;
 use actix_web_actors::ws;
-use crate::client::{ClientActor, ConnectUser, DisconnectUser, UserMessage};
-use crate::server::Message;
+use std::time::{Duration, Instant};
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const USER_TIMEOUT: Duration = Duration::from_secs(10);
@@ -10,7 +9,7 @@ const USER_TIMEOUT: Duration = Duration::from_secs(10);
 pub struct UserActor {
     pub hb: Instant,
     pub user_id: String,
-    pub client: Addr<ClientActor>, // Reference to the ClientActor
+    pub client: Addr<ClientActor>,
 }
 
 impl UserActor {
@@ -69,15 +68,6 @@ impl Actor for UserActor {
         Running::Stop
     }
 }
-
-impl Handler<Message> for UserActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
-    }
-}
-
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for UserActor {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         let msg = match msg {

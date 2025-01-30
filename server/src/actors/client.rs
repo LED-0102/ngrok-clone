@@ -123,7 +123,8 @@ impl Handler<Message> for ClientActor {
     type Result = ();
 
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
-        ctx.text(msg.0);
+        let msg = serde_json::to_string(&msg).unwrap();
+        ctx.text(msg);
     }
 }
 

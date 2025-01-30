@@ -1,21 +1,25 @@
 use std::{
-    collections::{HashMap},
+    collections::HashMap,
     sync::{
         atomic::{AtomicUsize, Ordering},
         Arc,
     },
 };
 
-use actix::prelude::*;
-use actix_web::web;
-use rand::{rngs::ThreadRng, Rng};
-use tokio::sync::oneshot;
 use crate::actors::client::ClientActor;
 use crate::request_manager::RequestState;
+use actix::prelude::*;
+use actix_web::web;
+use rand::rngs::ThreadRng;
+use serde::Serialize;
+use tokio::sync::oneshot;
 
-#[derive(actix::Message)]
+#[derive(actix::Message, Serialize)]
 #[rtype(result = "()")]
-pub struct Message(pub String);
+pub struct Message {
+    pub msg: String,
+    pub id: String
+}
 
 #[derive(actix::Message)]
 #[rtype(usize)]
@@ -44,9 +48,12 @@ impl actix::Message for ClientAddr {
     type Result = Option<Addr<ClientActor>>;
 }
 
+#[derive(actix::Message)]
+#[rtype(result = "()")]
 pub struct SendMessage {
     pub client_id: String,
-
+    pub message: String,
+    pub request_id: String,
 }
 
 pub struct AddRequest {
@@ -71,7 +78,7 @@ impl ChatServer {
 
         ChatServer {
             sessions: HashMap::new(),
-            rng: rand::thread_rng(),
+            rng: rand::rng(),
             visitor_count,
         }
     }
@@ -142,6 +149,19 @@ impl Handler<AddRequest> for ChatServer {
             Some(rx)
         } else {
             None
+        }
+    }
+}
+
+impl Handler<SendMessage> for ChatServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: SendMessage, _: &mut Self::Context) -> Self::Result {
+        if let Some(addr) = self.sessions.get(&msg.client_id) {
+            addr.do_send(Message {
+                msg: msg.message,
+                id: msg.request_id,
+            });
         }
     }
 }
