@@ -1,38 +1,19 @@
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
-use tokio_tungstenite::connect_async;
-use futures_util::StreamExt; // To use StreamExt for `next()`
+mod client;
+mod config;
+mod cli;
 
-#[tokio_macros::main]
+use crate::cli::Cli;
+use config::Config;
+use client::connect_to_server;
+
+#[tokio::main]
 async fn main() {
-    let url = "ws://127.0.0.1:8080/v1/ws";
+    let args = Cli::parse();
 
-    // Convert the URL into a client request
-    let mut req = url.into_client_request().unwrap();
+    let config = Config::new(args.port, args.user_id);
 
-    // Add the custom header
-    let headers = req.headers_mut();
-    headers.insert("user_id", "hello".parse().unwrap());
-
-    // Establish WebSocket connection
-    let (mut ws_stream, response) = match connect_async(req).await {
-        Ok((ws_stream, response)) => (ws_stream, response),
-        Err(e) => {
-            eprintln!("Error connecting to the server: {}", e.to_string());
-            return;
-        }
-    };
-    println!("Connected to the server!");
-
-    // Receive messages from the WebSocket stream
-    while let Some(message) = ws_stream.next().await {
-        match message {
-            Ok(msg) => {
-                println!("Received: {}", msg.to_text().unwrap());
-            }
-            Err(e) => {
-                eprintln!("Error receiving message: {}", e);
-                break;
-            }
-        }
+    match connect_to_server(&config).await {
+        Ok(_) => println!("Connection closed."),
+        Err(e) => eprintln!("Error: {:?}", e.to_string()),
     }
 }

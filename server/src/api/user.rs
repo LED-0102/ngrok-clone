@@ -97,6 +97,9 @@ pub async fn user_route (
 
     if is_websocket {
         let user_id = generate_unique_string();
+
+        todo!("Implement the WebSocket connection");
+
         ws::start(
             actors::user::UserActor {
                 hb: Instant::now(),
