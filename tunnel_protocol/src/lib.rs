@@ -1,5 +1,6 @@
 pub mod http_request;
 pub mod http_response;
+pub mod message;
 
 use crate::http_request::HttpRequestWrapper;
 use crate::http_response::HttpResponseWrapper;
@@ -8,13 +9,10 @@ use serde_derive::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum MessageProtocol<'a> {
-    Connect,
-    Disconnect,
     HTTPRequest(HttpRequestWrapper<'a>),
     HTTPResponse(HttpResponseWrapper<'a>),
-    WebSocketConnect,
-    WebSocketDisconnect,
     WebSocketMessage,
+    WebSocketConnect
 }
 
 

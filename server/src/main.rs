@@ -18,8 +18,11 @@ use actix_web::{
     middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use actix_web_actors::ws;
+use once_cell::sync::Lazy;
 use crate::actors::client;
 use crate::request_manager::RequestState;
+
+static GLOBAL_REQUEST_STATE: Lazy<Arc<RequestState>> = Lazy::new(|| Arc::new(RequestState::new()));
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -28,13 +31,11 @@ async fn main() -> std::io::Result<()> {
 
     let server = server::ChatServer::new(app_state.clone()).start();
 
-    let request_state = web::Data::new(RequestState::new());
-
     log::info!("starting HTTP server.rs at http://localhost:8080");
 
     HttpServer::new(move || {
         App::new()
-            .app_data(request_state.clone())
+            .app_data(web::PayloadConfig::new(usize::MAX))
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
             .configure(api::api_config)

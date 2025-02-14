@@ -45,8 +45,7 @@ pub async fn user_route (
     mut req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
-    path: web::Path<(String, String)>,
-    request_state: web::Data<RequestState>
+    path: web::Path<(String, String)>
 ) -> Result<HttpResponse, Error> {
     let (service_id, tail) = path.into_inner();
 
@@ -81,12 +80,10 @@ pub async fn user_route (
         .unwrap_or(false);
 
     let request_id = generate_unique_request_id();
-    let mut r = request_state.clone();
 
     let mut recv = match srv.send(server::AddRequest {
         request_id: request_id.clone(),
         client_id: service_id.clone(),
-        request_state: r,
     })
         .await {
         Ok(s) => {s}
@@ -117,11 +114,12 @@ pub async fn user_route (
             message: http_request,
             request_id,
         });
-
+        println!("Message sent");
         match recv {
             Some(rx) => {
                 match rx.await {
                     Ok(response) => {
+                        println!("Response received {}", &response);
                         match http_response::HttpResponseWrapper::from_str(&response) {
                             Ok(res) => {
                                 Ok(res.into())

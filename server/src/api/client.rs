@@ -32,7 +32,8 @@ pub async fn client_route(
             } else {
                 println!("Session connected for user_id: {}", user_id);
             }
-            ws::start(
+
+            ws::WsResponseBuilder::new(
                 actors::client::ClientActor {
                     hb: Instant::now(),
                     addr: srv.get_ref().clone(),
@@ -40,8 +41,9 @@ pub async fn client_route(
                     user_sessions: HashMap::new(),
                 },
                 &req,
-                stream,
-            )
+                stream
+            ).frame_size(10*1024*1024)
+                .start()
         }
         None => {
             Ok(HttpResponse::BadRequest()

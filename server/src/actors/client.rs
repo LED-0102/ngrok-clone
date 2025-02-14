@@ -1,9 +1,14 @@
 use actix::prelude::*;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use actix_web::web;
 use actix_web_actors::ws;
 use crate::actors::user::UserActor;
-use crate::server::{ChatServer, Connect, Disconnect, Message};
+use crate::server::{ChatServer, Connect, Disconnect};
+use tunnel_protocol::message::Message;
+use tunnel_protocol::MessageProtocol;
+use crate::GLOBAL_REQUEST_STATE;
+use crate::request_manager::RequestState;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -67,7 +72,6 @@ impl Actor for ClientActor {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         self.hb(ctx);
-
         let addr = ctx.address();
         self.addr
             .send(Connect {
@@ -130,9 +134,11 @@ impl Handler<Message> for ClientActor {
 
 impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+
         let msg = match msg {
             Ok(msg) => msg,
-            Err(_) => {
+            Err(e) => {
+                println!("protocol error {}", e.to_string());
                 ctx.stop();
                 return;
             }
@@ -147,8 +153,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
                 self.hb = Instant::now();
             }
             ws::Message::Text(text) => {
-                println!("Received from server: {}", text);
-                // Handle incoming messages from ServerActor
+                let msg: Message = match serde_json::from_str(&text) {
+                    Ok(msg) => msg,
+                    Err(e) => {
+                        println!("Failed to parse message: {}", e.to_string());
+                        return;
+                    }
+                };
+                let client_id = self.client_id.clone();
+                println!("Client sent: {}", &msg.msg);
+                request_handler(msg, &client_id);
             }
             ws::Message::Binary(_) => println!("Unexpected binary"),
             ws::Message::Close(reason) => {
@@ -160,5 +174,21 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
             }
             ws::Message::Nop => (),
         }
+    }
+}
+
+pub fn request_handler (msg: Message, client_id: &str) {
+    let msg_protocol: MessageProtocol = serde_json::from_str(&msg.msg).unwrap();
+    let id = msg.id;
+
+    match msg_protocol {
+        MessageProtocol::HTTPRequest(_) => {}
+        MessageProtocol::HTTPResponse(res) => {
+            GLOBAL_REQUEST_STATE.send_response(client_id, &id, serde_json::to_string(&res).unwrap()).unwrap_or_else(|e| {
+                eprintln!("Failed to send response: {}", e);
+            });
+        }
+        MessageProtocol::WebSocketMessage => {}
+        MessageProtocol::WebSocketConnect => {}
     }
 }

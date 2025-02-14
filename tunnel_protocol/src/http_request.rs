@@ -7,10 +7,10 @@ use crate::MessageProtocol;
 
 #[derive(Serialize, Deserialize)]
 pub struct HttpRequestWrapper<'a> {
-    method: Cow<'a, str>,
-    uri: Cow<'a, str>,
-    headers: HashMap<Cow<'a, str>, Cow<'a, [u8]>>,
-    body: Cow<'a, [u8]>,
+    pub method: Cow<'a, str>,
+    pub uri: Cow<'a, str>,
+    pub headers: HashMap<Cow<'a, str>, Cow<'a, [u8]>>,
+    pub body: Cow<'a, [u8]>,
 }
 
 impl<'a> MessageProtocol<'a> {

@@ -1,18 +1,22 @@
-use futures_util::StreamExt;
-use tokio_tungstenite::tungstenite::{http, Message};
+use tokio_tungstenite::tungstenite::{http};
 use tunnel_protocol::http_request::HttpRequestWrapper;
 use tunnel_protocol::http_response::HttpResponseWrapper;
 use tunnel_protocol::message::Message as TunnelMessage;
 use tunnel_protocol::MessageProtocol;
+use std::borrow::Cow;
+use std::collections::HashMap;
+use reqwest::Method;
+use std::str::FromStr;
+use crate::config::Config;
 
 /// Handles incoming WebSocket messages
-pub async fn handle_message (msg: TunnelMessage) -> Option<TunnelMessage> {
-    let protocol_message: MessageProtocol = serde_json::from_str(&msg.msg).unwrap();
+pub async fn handle_message (msg: TunnelMessage, config: &Config) -> Option<TunnelMessage> {
+    let mut protocol_message: MessageProtocol = serde_json::from_str(&msg.msg).unwrap();
 
     match protocol_message {
         MessageProtocol::HTTPRequest(req) => {
-            let response = handle_http_request(req).await;
-
+            let response = handle_http_request(req, config).await;
+            println!("Response: {}", response);
             return Some(TunnelMessage {
                 msg: response,
                 id: msg.id,
@@ -26,19 +30,24 @@ pub async fn handle_message (msg: TunnelMessage) -> Option<TunnelMessage> {
     None
 }
 
-pub async fn handle_http_request (req: HttpRequestWrapper) -> String {
-    let uri = format!("{}{}", "http://localhost:8080/", req.uri);
-
+pub async fn handle_http_request (req: HttpRequestWrapper<'_>, config: &Config) -> String {
+    let uri = format!("{}{}{}{}", "http://localhost:", config.local_port, "/", req.uri);
+    println!("Sending request to: {}", &uri);
     let client = reqwest::Client::new();
 
-    let mut request_builder = client.request(http::method::Method::from(req.method.as_ref()), &uri);
+    let mut request_builder = client.request(Method::from_str(req.method.as_ref()).unwrap(), &uri);
 
     for (key, value) in req.headers.iter() {
         request_builder = request_builder.header(key.as_ref(), value.as_ref());
     }
 
-    let response = match request_builder.body(reqwest::Body::from(req.body)).send().await {
-        Ok(response) => response,
+    let body = req.body.to_vec();
+
+    let response = match request_builder.body(body).send().await {
+        Ok(response) => {
+            println!("Received Response");
+            response
+        },
         Err(e) => {
             eprintln!("Failed to send request: {}", e);
             let resp =  HttpResponseWrapper {
@@ -51,6 +60,8 @@ pub async fn handle_http_request (req: HttpRequestWrapper) -> String {
         }
     };
 
-    HttpResponseWrapper::from_reqwest_response(response).await
+
+
+    MessageProtocol::from_reqwest_response(response).await
 
 }

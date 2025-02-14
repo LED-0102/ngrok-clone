@@ -10,6 +10,7 @@ use crate::handler::handle_message;
 use config::Config;
 use client::connect_to_server;
 use tunnel_protocol::message::Message as TunnelMessage;
+use clap::Parser;
 
 #[tokio_macros::main]
 async fn main() {
@@ -20,7 +21,7 @@ async fn main() {
     let mut handlers = match connect_to_server(&config).await {
         Ok(handlers) => handlers,
         Err(e) => {
-            eprintln!("Failed to connect to server: {}", e);
+            eprintln!("Failed to connect to server: {}", e.to_string());
             return;
         }
     };
@@ -33,10 +34,11 @@ async fn main() {
             Ok(Message::Text(text)) => {
                 let tunnel_msg: TunnelMessage = serde_json::from_str(&text).unwrap();
 
-                let response = handle_message(tunnel_msg).await;
+                let response = handle_message(tunnel_msg, &config).await;
 
                 if let Some(response) = response {
                     let response_text = serde_json::to_string(&response).unwrap();
+                    println!("Sending response: {}", response_text);
                     snd.send(Message::Text(Utf8Bytes::from(response_text))).await.unwrap();
                 }
             }

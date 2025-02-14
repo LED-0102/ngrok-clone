@@ -11,15 +11,9 @@ use crate::request_manager::RequestState;
 use actix::prelude::*;
 use actix_web::web;
 use rand::rngs::ThreadRng;
-use serde::Serialize;
 use tokio::sync::oneshot;
-
-#[derive(actix::Message, Serialize)]
-#[rtype(result = "()")]
-pub struct Message {
-    pub msg: String,
-    pub id: String
-}
+use tunnel_protocol::message::Message;
+use crate::GLOBAL_REQUEST_STATE;
 
 #[derive(actix::Message)]
 #[rtype(usize)]
@@ -58,8 +52,7 @@ pub struct SendMessage {
 
 pub struct AddRequest {
     pub request_id: String,
-    pub client_id: String,
-    pub request_state: web::Data<RequestState>,
+    pub client_id: String
 }
 
 impl actix::Message for AddRequest {
@@ -144,7 +137,7 @@ impl Handler<AddRequest> for ChatServer {
 
     fn handle(&mut self, msg: AddRequest, _: &mut Self::Context) -> Self::Result {
         if self.sessions.contains_key(&msg.client_id) {
-            let rx = msg.request_state.setup_channel(msg.client_id.clone(), msg.request_id.clone());
+            let rx = GLOBAL_REQUEST_STATE.setup_channel(msg.client_id.clone(), msg.request_id.clone());
 
             Some(rx)
         } else {
