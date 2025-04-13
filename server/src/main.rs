@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use actix::*;
 use actix_files::{Files, NamedFile};
 use actix_web::{
-    middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder,
+    middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder, dev::Service
 };
 use actix_web_actors::ws;
 use once_cell::sync::Lazy;
@@ -35,6 +35,14 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .wrap_fn(|req, srv| {
+                println!("{} {}", req.method(), req.uri());
+                let future = srv.call(req);
+                async {
+                    let result = future.await?;
+                    Ok(result)
+                }
+            })
             .app_data(web::PayloadConfig::new(usize::MAX))
             .app_data(web::Data::from(app_state.clone()))
             .app_data(web::Data::new(server.clone()))
@@ -42,7 +50,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
     })
         .workers(2)
-        .bind(("127.0.0.1", 8080))?
+        .bind(("127.0.0.1", 8000))?
         .run()
         .await
 }
