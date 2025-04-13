@@ -126,7 +126,6 @@ pub async fn user_route (
             Some(rx) => {
                 match rx.await {
                     Ok(response) => {
-                        println!("Response received {}", &response);
                         match http_response::HttpResponseWrapper::from_str(&response) {
                             Ok(res) => {
                                 Ok(res.into())

@@ -10,6 +10,8 @@ pub fn api_config(cfg: &mut web::ServiceConfig) {
             .route("/ws", web::get().to(client::client_route))
     );
 
-    // Global catch-all route for subdomain-based access
-    cfg.route("/{tail:.*}", web::get().to(user::user_route));
+    // Define a fallback route — ONLY triggered when nothing else matched
+    cfg.default_service(
+        web::route().to(user::user_route)
+    );
 }
