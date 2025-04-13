@@ -18,12 +18,12 @@ pub async fn connect_to_server(config: &Config) -> Result<(WsSender, WsReceiver)
     let server_url = &config.server_url;
     let mut req = server_url.into_client_request()?;
 
-    let mut headers = req.headers_mut().insert("user_id", HeaderValue::from_str(&config.user_id)?);
+    req.headers_mut().insert("User-Id", HeaderValue::from_str(&config.user_id)?);
 
 
     println!("user_id header: {:?}", &config.user_id);
 
-    println!("user_id header: {:?}", req.headers().get("user_id"));
+    println!("user_id header: {:?}", req.headers().get("User-Id"));
 
     println!("Connecting to tunnel server at: {}", server_url);
 
