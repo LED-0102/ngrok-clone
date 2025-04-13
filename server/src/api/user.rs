@@ -45,9 +45,16 @@ pub async fn user_route (
     mut req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
-    path: web::Path<(String, String)>
+    path: web::Path<(String)>
 ) -> Result<HttpResponse, Error> {
-    let (service_id, tail) = path.into_inner();
+    let (tail) = path.into_inner();
+
+    let full_host = req.headers().get("Host").map(|v| v.to_str().unwrap_or("")).unwrap_or("");
+
+    println!("Request headers: {:?}", &req.headers());
+
+    // Extract the subdomain (e.g., "sub" from "sub.yourdomain.com")
+    let service_id = full_host.split('.').next().unwrap_or("").to_string();
 
     let key = srv.send(server::CheckKey {
         key: service_id.clone(),

@@ -7,6 +7,6 @@ pub fn api_config (cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/v1")
             .route("/ws", web::get().to(client::client_route))
-            .route("/{client_id}/{tail:.*}", web::get().to(user::user_route))
+            .route("/{tail:.*}", web::get().to(user::user_route))
     );
 }
