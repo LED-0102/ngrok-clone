@@ -48,9 +48,19 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(server.clone()))
             .configure(api::api_config)
             .wrap(Logger::default())
+
+            // Add the new route for "Hello World"
+            .route("/hello", web::get().to(hello_world)) // This is your new route
     })
         .workers(2)
         .bind(("127.0.0.1", 8000))?
         .run()
         .await
+}
+
+// This is the handler function for the new "/hello" route
+async fn hello_world() -> impl Responder {
+    HttpResponse::Ok()
+        .content_type("text/html")
+        .body("<html><body><h1>Hello World</h1></body></html>")
 }
