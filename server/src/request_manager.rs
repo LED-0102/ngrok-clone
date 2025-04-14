@@ -1,6 +1,5 @@
 use dashmap::DashMap;
 use tokio::sync::oneshot;
-use once_cell::sync::Lazy;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]

@@ -1,37 +1,32 @@
 mod actors;
 mod api;
 mod request_manager;
+mod config;
 
 use actors::server;
 
-use std::{
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc,
-    },
-    time::Instant,
-};
-use std::collections::HashMap;
-use actix::*;
-use actix_files::{Files, NamedFile};
-use actix_web::{
-    middleware::Logger, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder, dev::Service
-};
-use actix_web_actors::ws;
-use once_cell::sync::Lazy;
 use crate::actors::client;
 use crate::request_manager::RequestState;
+use actix::*;
+use actix_web::{
+    dev::Service, middleware::Logger, web, App, HttpResponse, HttpServer, Responder
+};
+use once_cell::sync::Lazy;
+use std::sync::{
+    atomic::AtomicUsize,
+    Arc,
+};
 
 static GLOBAL_REQUEST_STATE: Lazy<Arc<RequestState>> = Lazy::new(|| Arc::new(RequestState::new()));
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-
+    dotenvy::dotenv().ok();
     let app_state = Arc::new(AtomicUsize::new(0));
 
     let server = server::ChatServer::new(app_state.clone()).start();
 
-    log::info!("starting HTTP server.rs at http://localhost:8080");
+    let port: u32 = config::get_config("PORT");
 
     HttpServer::new(move || {
         App::new()
@@ -53,7 +48,7 @@ async fn main() -> std::io::Result<()> {
             .route("/hello", web::get().to(hello_world)) // This is your new route
     })
         .workers(2)
-        .bind(("127.0.0.1", 8000))?
+        .bind(("127.0.0.1", port))?
         .run()
         .await
 }
