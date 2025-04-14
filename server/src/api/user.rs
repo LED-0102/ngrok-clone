@@ -47,7 +47,7 @@ pub async fn user_route (
     srv: web::Data<Addr<server::ChatServer>>
 ) -> Result<HttpResponse, Error> {
     println!("Triggered user_route");
-
+    let tail = req.path().trim_start_matches('/');
     let full_host = req.headers().get("Host").map(|v| v.to_str().unwrap_or("")).unwrap_or("");
 
     println!("Request headers: {:?}", &req.headers());
