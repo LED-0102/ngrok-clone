@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
 
     let server = server::ChatServer::new(app_state.clone()).start();
 
-    let port: u32 = config::get_config("PORT");
+    let port: u16 = config::get_config("PORT");
 
     HttpServer::new(move || {
         App::new()
@@ -44,7 +44,6 @@ async fn main() -> std::io::Result<()> {
             .configure(api::api_config)
             .wrap(Logger::default())
 
-            // Add the new route for "Hello World"
             .route("/hello", web::get().to(hello_world)) // This is your new route
     })
         .workers(2)
@@ -53,7 +52,6 @@ async fn main() -> std::io::Result<()> {
         .await
 }
 
-// This is the handler function for the new "/hello" route
 async fn hello_world() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/html")
