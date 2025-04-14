@@ -38,7 +38,6 @@ async fn main() {
 
                 if let Some(response) = response {
                     let response_text = serde_json::to_string(&response).unwrap();
-                    println!("Sending response: {}", response_text);
                     snd.send(Message::Text(Utf8Bytes::from(response_text))).await.unwrap();
                 }
             }

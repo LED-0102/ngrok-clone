@@ -16,7 +16,6 @@ pub async fn handle_message (msg: TunnelMessage, config: &Config) -> Option<Tunn
     match protocol_message {
         MessageProtocol::HTTPRequest(req) => {
             let response = handle_http_request(req, config).await;
-            println!("Response: {}", response);
             return Some(TunnelMessage {
                 msg: response,
                 id: msg.id,

@@ -20,11 +20,6 @@ pub async fn connect_to_server(config: &Config) -> Result<(WsSender, WsReceiver)
 
     req.headers_mut().insert("User-Id", HeaderValue::from_str(&config.user_id)?);
 
-
-    println!("user_id header: {:?}", &config.user_id);
-
-    println!("user_id header: {:?}", req.headers().get("User-Id"));
-
     println!("Connecting to tunnel server at: {}", server_url);
 
     let (ws_stream, _) = match connect_async(req).await {
@@ -35,6 +30,7 @@ pub async fn connect_to_server(config: &Config) -> Result<(WsSender, WsReceiver)
     };
 
     println!("Connected to tunnel server as user: {}", config.user_id);
+    println!("https://{}.ledd.buzz", config.user_id);
 
     let (write, read) = ws_stream.split();
 
