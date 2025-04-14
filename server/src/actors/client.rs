@@ -161,7 +161,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ClientActor {
                     }
                 };
                 let client_id = self.client_id.clone();
-                println!("Client sent: {}", &msg.msg);
                 request_handler(msg, &client_id);
             }
             ws::Message::Binary(_) => println!("Unexpected binary"),
