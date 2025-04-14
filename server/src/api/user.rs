@@ -44,10 +44,9 @@ fn generate_unique_request_id() -> String {
 pub async fn user_route (
     mut req: HttpRequest,
     stream: web::Payload,
-    srv: web::Data<Addr<server::ChatServer>>,
-    path: web::Path<(String)>
+    srv: web::Data<Addr<server::ChatServer>>
 ) -> Result<HttpResponse, Error> {
-    let (tail) = path.into_inner();
+    println!("Triggered user_route");
 
     let full_host = req.headers().get("Host").map(|v| v.to_str().unwrap_or("")).unwrap_or("");
 

@@ -17,6 +17,7 @@ pub async fn client_route(
         .and_then(|val| val.to_str().ok());
 
     println!("User ID: {:?}", user_id);
+    println!("Inside client_route");
 
     match user_id {
         Some(user_id) => {
